@@ -1,0 +1,176 @@
+Perfect — I’ll give you **ready-to-run `curl` commands** to test everything we just built, organized clearly by feature! 🚀  
+(You can copy-paste them directly into your terminal.)
+
+I'll assume your API is running locally on `http://localhost:8000/articles`, but you can easily adjust if needed.
+
+---
+
+# 🛠 **CURL Test Cases**
+
+---
+
+## 1. 📄 Create an Article
+
+```bash
+curl -X POST "http://localhost:8000/articles/" \
+-H "Content-Type: application/json" \
+-d '{
+    "source_id": 1,
+    "url": "https://example.com/news1",
+    "title": "Breaking News: Example 1",
+    "author": "John Doe",
+    "content": "Full content of the news article goes here...",
+    "summary": "Short summary of the article",
+    "published_at": "2025-04-28T10:00:00",
+    "classification": "politics",
+    "sentiment": "positive",
+    "thumbnail_url": "https://example.com/image.jpg",
+    "tags": "politics,world",
+    "is_featured": true
+}'
+```
+
+✅ This should create a new article.
+
+---
+
+## 2. 📋 Get All Articles (Basic)
+
+```bash
+curl -X GET "http://localhost:8000/articles/"
+```
+
+✅ This should return **all articles**.
+
+---
+
+## 3. 🎯 Get Articles with Filters (Search & Tags)
+
+- **Search by title/content**:
+
+```bash
+curl -X GET "http://localhost:8000/articles/?search=breaking"
+```
+
+- **Filter by `classification`**:
+
+```bash
+curl -X GET "http://localhost:8000/articles/?classification=politics"
+```
+
+- **Filter by `sentiment`**:
+
+```bash
+curl -X GET "http://localhost:8000/articles/?sentiment=positive"
+```
+
+- **Filter by `tags` (multiple tags)**:
+
+```bash
+curl -X GET "http://localhost:8000/articles/?tags=world,politics"
+```
+
+- **Filter Featured Articles**:
+
+```bash
+curl -X GET "http://localhost:8000/articles/?is_featured=true"
+```
+
+- **Paging** (skip 10, get 10):
+
+```bash
+curl -X GET "http://localhost:8000/articles/?skip=10&limit=10"
+```
+
+✅ All of these should return filtered articles!
+
+---
+
+## 4. 🔎 Get a Specific Article by ID
+
+```bash
+curl -X GET "http://localhost:8000/articles/1"
+```
+
+✅ Replace `1` with the correct article ID you want to fetch.
+
+---
+
+## 5. 🖊️ Update an Article
+
+```bash
+curl -X PUT "http://localhost:8000/articles/1" \
+-H "Content-Type: application/json" \
+-d '{
+    "source_id": 1,
+    "url": "https://example.com/news1-updated",
+    "title": "Updated News Title",
+    "author": "Jane Doe",
+    "content": "Updated full content...",
+    "summary": "Updated summary",
+    "published_at": "2025-04-29T12:00:00",
+    "classification": "economy",
+    "sentiment": "neutral",
+    "thumbnail_url": "https://example.com/image_updated.jpg",
+    "tags": "economy,finance",
+    "is_featured": false
+}'
+```
+
+✅ Updates all the article fields.
+
+---
+
+## 6. 🗑️ Delete an Article
+
+```bash
+curl -X DELETE "http://localhost:8000/articles/1"
+```
+
+✅ Deletes the article by ID.
+
+---
+
+## 7. 🚨 Report an Article for Misinformation
+
+```bash
+curl -X POST "http://localhost:8000/articles/1/report?reason=Contains false information" 
+```
+
+✅ This will mark the article as **reported**.
+
+---
+
+## 8. 🛡️ Get All Reported Articles
+
+```bash
+curl -X GET "http://localhost:8000/articles/reported/"
+```
+
+✅ Lists all articles **reported by users**.
+
+---
+
+# 📋 Summary Sheet
+
+| Action | Curl Command |
+|:-|:-|
+| Create Article | `POST /articles/` |
+| Get All Articles | `GET /articles/` |
+| Get Articles with Filters | `GET /articles/?filter` |
+| Get Single Article | `GET /articles/{id}` |
+| Update Article | `PUT /articles/{id}` |
+| Delete Article | `DELETE /articles/{id}` |
+| Report an Article | `POST /articles/{id}/report?reason=xxx` |
+| Get All Reported Articles | `GET /articles/reported/` |
+
+---
+
+# ⚡ Notes:
+- Make sure you have **at least one `Profile` created** with ID = 1 in your database first, otherwise the `source_id: 1` in `create` will fail.
+- If you use authentication later, you'll need to add `-H "Authorization: Bearer <token>"` in curl headers.
+
+---
+
+Would you also want me to generate a **full Postman collection** you can import and click to test everything easily? 🚀  
+It would take 2 minutes! Want me to prepare it? 🎯

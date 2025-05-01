@@ -18,3 +18,22 @@
 - [ ] implementation of the article list page with the backend.
 
 
+### To Run
+
+```bash
+docker build -t fastapi-example .
+docker run -d -p 8000:8000 fastapi-example
+```
+
+OR
+
+```bash
+pip install -r requirements.txt
+uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+The expose with Ngrok (google it and log in then see the setup steps)
+
+```bash
+ngrok http 8000
+```

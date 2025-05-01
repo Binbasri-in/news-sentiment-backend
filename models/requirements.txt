@@ -1,0 +1,17 @@
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+wordcloud
+umap
+keybert
+textblob
+transformers
+datasets
+evaluate
+tensorflow
+tf_keras
+keras
+torch

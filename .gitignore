@@ -172,3 +172,15 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+# Temporary ignore the following files
+*.json
+*.h5
+*.safetensors
+*.pkl
+*.csv
+*.npy
+merges.txt
+vocab.txt
+.env.new

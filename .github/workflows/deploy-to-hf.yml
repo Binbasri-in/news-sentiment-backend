@@ -19,5 +19,5 @@ jobs:
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
-          git remote add space https://huggingface.co/spaces/your-hf-username/your-space-name
-          git push --force https://your-hf-username:$HF_TOKEN@huggingface.co/spaces/your-hf-username/your-space-name main
+          git remote add space https://huggingface.co/spaces/binbasri1/news-sentiment-backend
+          git push --force https://your-hf-username:$HF_TOKEN@huggingface.co/spaces/binbasri1/news-sentiment-backend main

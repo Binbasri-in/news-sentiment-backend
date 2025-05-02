@@ -3,7 +3,7 @@ name: Deploy to Hugging Face Spaces
 on:
   push:
     branches:
-      - main  # or your default branch name
+      - huggingface-deploy  # or your default branch name
 
 jobs:
   deploy:

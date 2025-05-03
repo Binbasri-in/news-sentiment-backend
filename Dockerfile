@@ -12,7 +12,9 @@ RUN python -m playwright install --with-deps
 
 # Create and switch to a non-root user (required by Hugging Face Spaces)
 RUN useradd -m -u 1000 user
+RUN chown -R 1000:1000 /app
 USER user
+
 # Add local bin to PATH for non-root user
 ENV PATH="/home/user/.local/bin:$PATH"
 

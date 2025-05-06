@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 
 from api.database import Base, engine
-from api.routers import profiles, trigger, articles, dashboard
+from api.routers import profiles, trigger, articles, dashboard, detector
 from api.scheduler import start_scheduler
 from api.config import setup_logging
 from api.ml_models import load_models
@@ -42,6 +42,7 @@ app.include_router(profiles.router, prefix="/profiles", tags=["Profiles"])
 app.include_router(trigger.router, prefix="/auto", tags=["auto"]) 
 app.include_router(articles.router, prefix="/articles", tags=["Articles"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
+app.include_router(detector.router, prefix="/detect", tags=["Detect"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,9 +52,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/", response_class=JSONResponse)
 def dashboard():
     return {"message": "Welcome to the Dashboard"}
+
 
 # --- Global 404 handler ---
 @app.exception_handler(StarletteHTTPException)
@@ -63,3 +66,4 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
     else:
         # For other HTTP errors (403, 500, etc.) you can customize further if you want
         return JSONResponse(content={"error": f"Error {exc.status_code}: {exc.detail}"}, status_code=exc.status_code)
+

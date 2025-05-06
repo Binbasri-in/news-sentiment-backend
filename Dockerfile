@@ -14,8 +14,6 @@ RUN python -m playwright install --with-deps
 RUN useradd -m -u 1000 user
 RUN chown -R 1000:1000 /app
 USER user
-
-# Add local bin to PATH for non-root user
 ENV PATH="/home/user/.local/bin:$PATH"
 
 # Set environment variable for crawl4ai DB/cache path
@@ -30,8 +28,10 @@ RUN python -m playwright install
 # Run crawl4ai setup as non-root
 RUN crawl4ai-setup
 
-# Copy the rest of the code
+# Copy the full codebase
 COPY --chown=user . .
 
-# Run the FastAPI app (HF Spaces default port 7860)
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860"]
+EXPOSE 7860
+
+# Updated CMD to trust Hugging Face proxy headers
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers", "--forwarded-allow-ips", "*"]

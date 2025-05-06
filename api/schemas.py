@@ -35,7 +35,11 @@ class ArticleBase(BaseModel):
     summary: Optional[str] = None
     published_at: Optional[datetime] = None
     classification: str
+    ministry_to_report: Optional[str] = None
     sentiment: str
+    positive_sentiment: Optional[int] = None
+    negative_sentiment: Optional[int] = None
+    neutral_sentiment: Optional[int] = None
     thumbnail_url: Optional[str] = None
     tags: Optional[str] = None
     is_featured: bool = False

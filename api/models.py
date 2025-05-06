@@ -32,7 +32,12 @@ class Article(Base):
     published_at = Column(DateTime, default=datetime.utcnow)
 
     classification = Column(String, nullable=False)
+    ministry_to_report = Column(String, nullable=True)  # New: ministry in India to be reported to
     sentiment = Column(String, nullable=False)
+
+    positive_sentiment = Column(Integer, nullable=True)  # New: percentage of positive sentiment
+    negative_sentiment = Column(Integer, nullable=True)  # New: percentage of negative sentiment
+    neutral_sentiment = Column(Integer, nullable=True)   # New: percentage of neutral sentiment
 
     thumbnail_url = Column(String, nullable=True)  # New: image thumbnail for frontend preview
     tags = Column(String, nullable=True)           # New: comma-separated tags like "politics,world"

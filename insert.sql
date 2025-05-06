@@ -4,10 +4,7 @@ INSERT INTO profiles (name, base_url, language, crawling_strategy, crawling_stat
 VALUES 
   ('inshorts', 'https://inshorts.com/en/read', 'English', 'custom', 'idle', true),
   ('deccanheald', 'https://www.deccanherald.com/', 'English', 'custom', 'idle', true),
-  ('firstpost', 'https://www.firstpost.com/', 'English', 'custom', 'idle', true),
-  ('aajtak', 'https://www.aajtak.in/', 'Hindi', 'custom', 'idle', true),
-  ('indiatvnews', 'https://www.indiatvnews.com/', 'Hindi', 'custom', 'idle', true),
-  ('vijaykarnataka', 'https://vijaykarnataka.com/', 'kannada', 'custom', 'idle', true);
+  ('firstpost', 'https://www.firstpost.com/', 'English', 'custom', 'idle', true);
 
 
 -- Insert into articles

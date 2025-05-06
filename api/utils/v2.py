@@ -8,8 +8,6 @@ from fastapi import Request
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 import requests
 from unstructured.partition.html import partition_html
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from torch import no_grad
 from torch.nn.functional import softmax
@@ -41,7 +39,6 @@ class Crawl4AIPipelineSingleProfile:
             "International": 8,
             "Technology": 9
         }.items()}
-
         self.category_ministry_mapping = {
             "Entertainment": "Ministry of Information and Broadcasting",
             "Business": "Ministry of Finance",
@@ -54,22 +51,26 @@ class Crawl4AIPipelineSingleProfile:
             "International": "Ministry of External Affairs",
             "Technology": "Ministry of Electronics and Information Technology"
         }
-        self.session = get_session_with_agent()
 
-    def predict_sentiment(self, text: str) -> dict:
-        """
-        Predict sentiment scores for the given text and return all scores along with the label.
-        """
+    def predict_sentiment(self, text: str) -> str:
         tokenizer = get_model("sentiment_tokenizer")
         model = get_model("sentiment_model")
         inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
         with no_grad():
             outputs = model(**inputs)
-        scores = softmax(outputs.logits, dim=1)[0].tolist()
+        scores = softmax(outputs.logits, dim=1)[0]
         labels = ["negative", "neutral", "positive"]
-        sentiment_scores = {label: score for label, score in zip(labels, scores)}
-        sentiment_scores["predicted_label"] = labels[scores.index(max(scores))]
-        return sentiment_scores
+        # return an object with the max score and the corresponding label, and all the scors too
+        max_score = argmax(scores)
+        sentiment = labels[max_score]
+        return {
+            "sentiment": sentiment,
+            "scores": {
+                "negative": scores[0].item(),
+                "neutral": scores[1].item(),
+                "positive": scores[2].item()
+            }
+        }
 
     def predict_news_category(self, text: str) -> str:
         tokenizer = get_model("news_tokenizer")
@@ -102,7 +103,7 @@ class Crawl4AIPipelineSingleProfile:
                 logger.info(f"URL too short: {url}. Skipping.")
                 continue
 
-            result = extract_article_unstructured_html(url, session=self.session)
+            result = extract_article_unstructured_html(url)
             if not result:
                 logger.info(f"Failed to extract article from {url}. Skipping.")
                 continue
@@ -110,20 +111,17 @@ class Crawl4AIPipelineSingleProfile:
             title = result.get("title")
             content = result.get("content")
             if not title:
-                logger.info(f"Title missing for {url}. Skipping.")
-                if not content:
-                    continue
-                else:
-                    title = content[:50]  # Fallback to first 50 chars of content
+                logger.info(f"Title or content missing for {url}. Skipping.")
+                continue
             
             if not content:
-                logger.info(f"Content missing for {url}. Skipping.")
+                logger.info(f"No content extracted from {url}. Skipping.")
                 continue
             
             if len(title.split()) < 5:
                 logger.info(f"Title too short for {url}. Skipping.")
                 continue
-            
+        
             if len(content) < 1000:
                 logger.info(f"Content too short for {url}. Skipping.")
                 continue
@@ -131,29 +129,25 @@ class Crawl4AIPipelineSingleProfile:
             logger.debug(f"Classifying and sentiment analysis for URL: {url}")
             classification = self.predict_news_category(content)
             sentiment = self.predict_sentiment(content)
-
+            logger.error(f"Classification: {classification}, Sentiment: {sentiment}")
             if not classification or not sentiment:
                 classification = "Unknown"
                 sentiment = "Unknown"
                 
+            scores = sentiment.get("scores", {})
             logger.debug(f"Classification: {classification}, Sentiment: {sentiment}")
-
-            ministry = self.category_ministry_mapping.get(classification, "Unknown Ministry")
+            ministry = self.category_ministry_mapping.get(classification, "Unknown")
             article = Article(
                 source_id=self.profile.id,
                 url=url,
                 title=title,
                 content=content,
                 classification=classification,
+                sentiment=sentiment["sentiment"],
                 ministry_to_report=ministry,
-                sentiment=sentiment["predicted_label"],
-                positive_sentiment=int(sentiment.get("positive", 0) * 100),
-                negative_sentiment=int(sentiment.get("negative", 0) * 100),
-                neutral_sentiment=int(sentiment.get("neutral", 0) * 100),
-                thumbnail_url=None,  # Placeholder, update if thumbnail extraction is implemented
-                tags=None,           # Placeholder, update if tags extraction is implemented
-                is_featured=False,
-                is_reported=False
+                positive_sentiment=int(scores.get("positive", 0) * 100),
+                negative_sentiment=int(scores.get("negative", 0) * 100),
+                neutral_sentiment=int(scores.get("neutral", 0) * 100),
             )
             self.db.add(article)
             self.db.commit()
@@ -218,57 +212,32 @@ async def extract_all_urls(url: str, crawler: AsyncWebCrawler):
     return urls
 
 
-def extract_article_unstructured_html(url: str, session: requests.Session = None):
+def extract_article_unstructured_html(url: str):
     """
-    Extract article content using unstructured + a session with headers.
+    Extract article content from a given URL using unstructured library.
     """
-    session = session or get_session_with_agent()
-    
     try:
-        response = session.get(url, timeout=10)
+        response = requests.get(url)
         response.raise_for_status()
     except requests.HTTPError as e:
-        logger.error(f"HTTP error while fetching {url}: {e}")
+        print(f"Failed to fetch {url}: {e}")
         return None
     except requests.RequestException as e:
-        logger.error(f"Request failed for {url}: {e}")
+        print(f"Failed to fetch {url}: {e}")
         return None
-
+    
     elements = partition_html(text=response.text)
     title = ""
     content_lines = []
-
+    
     for el in elements:
         if isinstance(el, Title) and not title:
             title = el.text
         elif isinstance(el, NarrativeText):
             content_lines.append(el.text)
-
     content = "\n".join(content_lines).strip()
     return {
         "url": url,
         "title": title.strip(),
-        "content": content.strip()
+        "content": content
     }
-   
-    
-def get_session_with_agent() -> requests.Session:
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp",
-        "Connection": "keep-alive"
-    })
-
-    retries = Retry(total=5, backoff_factor=0.3, status_forcelist=[403, 500, 502, 503, 504])
-    adapter = HTTPAdapter(max_retries=retries)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-
-    return session

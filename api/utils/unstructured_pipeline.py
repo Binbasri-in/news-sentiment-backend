@@ -8,6 +8,8 @@ from fastapi import Request
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 import requests
 from unstructured.partition.html import partition_html
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from torch import no_grad
 from torch.nn.functional import softmax
@@ -51,6 +53,7 @@ class Crawl4AIPipelineSingleProfile:
             "International": "Ministry of External Affairs",
             "Technology": "Ministry of Electronics and Information Technology"
         }
+        self.session = get_session_with_agent()
 
     def predict_sentiment(self, text: str) -> str:
         tokenizer = get_model("sentiment_tokenizer")
@@ -103,7 +106,7 @@ class Crawl4AIPipelineSingleProfile:
                 logger.info(f"URL too short: {url}. Skipping.")
                 continue
 
-            result = extract_article_unstructured_html(url)
+            result = extract_article_unstructured_html(url, session=self.session)
             if not result:
                 logger.info(f"Failed to extract article from {url}. Skipping.")
                 continue
@@ -212,32 +215,60 @@ async def extract_all_urls(url: str, crawler: AsyncWebCrawler):
     return urls
 
 
-def extract_article_unstructured_html(url: str):
+def extract_article_unstructured_html(url: str, session: requests.Session = None):
     """
-    Extract article content from a given URL using unstructured library.
+    Extract article content using unstructured + a session with headers.
     """
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-    except requests.HTTPError as e:
-        print(f"Failed to fetch {url}: {e}")
-        return None
-    except requests.RequestException as e:
-        print(f"Failed to fetch {url}: {e}")
-        return None
     
+    session = session or get_session_with_agent()
+    response = requests.get(url, timeout=10)
+    if response.status_code != 200:
+        try:
+            response = session.get(url, timeout=10)
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            logger.error(f"HTTP error while fetching {url}: {e}")
+            return None
+        except requests.RequestException as e:
+            logger.error(f"Request failed for {url}: {e}")
+            return None
+
     elements = partition_html(text=response.text)
     title = ""
     content_lines = []
-    
+
     for el in elements:
         if isinstance(el, Title) and not title:
             title = el.text
         elif isinstance(el, NarrativeText):
             content_lines.append(el.text)
+
     content = "\n".join(content_lines).strip()
     return {
         "url": url,
         "title": title.strip(),
-        "content": content
+        "content": content.strip()
     }
+   
+    
+def get_session_with_agent() -> requests.Session:
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp",
+        "Connection": "keep-alive"
+    })
+
+    retries = Retry(total=5, backoff_factor=0.3, status_forcelist=[403, 500, 502, 503, 504])
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    return session
+

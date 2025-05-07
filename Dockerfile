@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright and required browsers
-RUN python -m playwright install --with-deps
+RUN python -m playwright install
 
 # Create a non-root user
 RUN useradd -m -u 1000 user && chown -R user:user /app

@@ -1,37 +1,40 @@
-FROM python:3.11
+FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-# Install Python dependencies
-RUN pip install --upgrade pip
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install system dependencies required by Playwright
+RUN apt-get update && apt-get install -y wget gnupg curl && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright and download the required browsers with dependencies
+# Upgrade pip and install Python dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright and required browsers
 RUN python -m playwright install --with-deps
 
-# Create and switch to a non-root user (required by Hugging Face Spaces)
-RUN useradd -m -u 1000 user
-RUN chown -R 1000:1000 /app
+# Create a non-root user
+RUN useradd -m -u 1000 user && chown -R user:user /app
 USER user
-ENV PATH="/home/user/.local/bin:$PATH"
 
-# Set environment variable for crawl4ai DB/cache path
+# Set environment variables
+ENV PATH="/home/user/.local/bin:$PATH"
 ENV CRAWL4AI_DB_PATH=/home/user/.crawl4ai
 
-# Ensure the cache directory exists for the non-root user
+# Ensure the cache directory exists
 RUN mkdir -p $CRAWL4AI_DB_PATH
 
 # Install Playwright browsers for the non-root user
 RUN python -m playwright install
 
-# Run crawl4ai setup as non-root
+# Run crawl4ai setup
 RUN crawl4ai-setup
 
-# Copy the full codebase
+# Copy app code
 COPY --chown=user . .
 
-EXPOSE 7860
+# Expose the Render port (default is to use $PORT)
+EXPOSE 10000
 
-# Updated CMD to trust Hugging Face proxy headers
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers", "--forwarded-allow-ips", "*"]
+# Use shell CMD so $PORT is respected
+CMD uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-10000} --proxy-headers --forwarded-allow-ips '*'

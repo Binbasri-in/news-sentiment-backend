@@ -92,12 +92,12 @@ async def trigger_crawl(profile_name: str, request: Request, db: Session = Depen
     profile = db.query(Profile).filter(Profile.name == profile_name).first()
     if not profile:
         logger.debug("Profile with name '%s' not found", profile_name)
-        raise HTTPException(status_code=404, detail="Profile not found")
+        return {"message": f"Profile '{profile_name}' not found."}
     
     # check if the profile is already crawled
     if profile.crawling_state == "crawled":
         logger.debug("Profile '%s' is already crawled", profile_name)
-        raise HTTPException(status_code=400, detail="Profile already crawled")
+        return {"message": f"Profile '{profile_name}' is already crawled."}
     
     # Here you would call the function to start the crawling process
     try:
@@ -106,7 +106,7 @@ async def trigger_crawl(profile_name: str, request: Request, db: Session = Depen
         
     except Exception as e:
         logger.error("An error occurred while triggering the crawl: %s", str(e))
-        raise HTTPException(status_code=500, detail="An error occurred while triggering the crawl")
+        return {"message": f"Crawl triggered for profile '{profile_name}'."}
     
     logger.debug("Crawl triggered successfully for profile: %s", profile)
     return {"message": f"Crawl triggered for profile '{profile_name}'."}

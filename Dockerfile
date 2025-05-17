@@ -31,6 +31,7 @@ RUN crawl4ai-setup
 # Copy the full codebase
 COPY --chown=user . .
 # Expose FastAPI port
-EXPOSE 7860
+EXPOSE 10000
 # Launch FastAPI app using uvicorn
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "10000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+

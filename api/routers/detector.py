@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.post("/", response_class=JSONResponse)
-def detect_sentiment(data: dict, ):
+def detect_sentiment(data: dict):
     # get the URL from the request body
     logger.info("Received data: %s", data)
     if not isinstance(data, dict):

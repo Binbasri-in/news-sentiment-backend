@@ -6,10 +6,20 @@ from numpy import argmax
 from torch import no_grad
 from torch.nn.functional import softmax
 from tensorflow.nn import softmax as tf_softmax
+import os
 
 from api.ml_models import get_model
 
 logger = logging.getLogger(__name__)
+
+translation_url = "https://google-translate113.p.rapidapi.com/api/v1/translator/text"
+detect_language_url = "https://google-translate113.p.rapidapi.com/api/v1/translator/detect-language"
+
+headers = {
+	"x-rapidapi-key": os.getenv("RAPIDAPI_KEY"),
+	"x-rapidapi-host": "google-translate113.p.rapidapi.com",
+	"Content-Type": "application/json"
+}
 
 class SingleArticleExtractor:
     def __init__(self):
@@ -97,6 +107,30 @@ class SingleArticleExtractor:
         predicted_index = argmax(probs)
         return self.inverse_category_mapping.get(predicted_index, f"label_{predicted_index}")
 
+    def detect_language(self, text: str):
+        payload = {"text": text}
+        response = requests.post(detect_language_url, json=payload, headers=headers)
+        if response.status_code == 200:
+            return response.json().get("source_lang_code")
+        else:
+            logger.error(f"Language detection failed: {response.status_code} - {response.text}")
+            return None
+        
+    def translate_to_english(self, text: str):
+        logger.info(f"Translating text to English: {text}")
+        payload = {
+            "from": "auto",
+            "to": "en",
+            "text": text
+        }
+        response = requests.post(translation_url, json=payload, headers=headers)
+        if response.status_code == 200:
+            return response.json().get("trans")
+        else:
+            logger.error(f"Translation failed: {response.status_code} - {response.text}")
+            return None
+        
+    
     def process(self, url: str):
         logger.info(f"Processing article from URL: {url}")
         result = self.extract_html_content(url)
@@ -109,11 +143,30 @@ class SingleArticleExtractor:
         if not title or not content:
             logger.warning(f"Missing title or content for URL: {url}")
             return None
-
+        if len(title.split()) < 1:
+            title = "No Title Extracted"
         if len(content) < 300:
             logger.warning(f"Content too short for analysis from URL: {url}")
             return None
 
+        # detect language
+        language_data = self.detect_language(content)
+        if not language_data:
+            logger.warning(f"Language detection failed for URL: {url}")
+        
+        # if anything other than English, translate to English
+        if language_data != "en":
+            translation_data = self.translate_to_english(content)
+            if not translation_data:
+                logger.warning(f"Translation failed for URL: {url}")
+            else:
+                content = translation_data
+                logger.info(f"Translated content to English for URL: {url}")
+                logger.debug(f"Translated content: {content}")
+        else:
+            logger.info(f"Content is already in English for URL: {url}")
+            
+        # predict sentiment and category
         sentiment_data = self.predict_sentiment(content)
         classification = self.predict_category(content)
         scores = sentiment_data["scores"]

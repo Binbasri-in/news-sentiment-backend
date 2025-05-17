@@ -13,6 +13,6 @@ apscheduler
 BeautifulSoup4
 crawl4ai
 transformers
-torch
 tensorflow
 unstructured
+tf-keras

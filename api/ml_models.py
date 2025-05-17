@@ -1,4 +1,4 @@
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, TFAutoModelForSequenceClassification
+from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
 import os
 import logging
 
@@ -14,8 +14,8 @@ def load_models():
 
     try:
         print(f"Loading sentiment model from: {sentiment_model_path}")
-        ml_models["sentiment_model"] = AutoModelForSequenceClassification.from_pretrained(
-            sentiment_model_path, token=HF_TOKEN
+        ml_models["sentiment_model"] = TFAutoModelForSequenceClassification.from_pretrained(
+            sentiment_model_path, token=HF_TOKEN, from_pt=True
         )
         ml_models["sentiment_tokenizer"] = AutoTokenizer.from_pretrained(
             sentiment_model_path, token=HF_TOKEN

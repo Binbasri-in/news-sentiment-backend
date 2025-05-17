@@ -135,7 +135,11 @@ def delete_article(article_id: int, db: Session = Depends(get_db)):
 
 # 🆕 NEW: Report an Article
 @router.post("/{article_id}/report", response_model=ArticleOut)
-def report_article(article_id: int, reason: str = Query(..., description="Reason for reporting"), db: Session = Depends(get_db)):
+def report_article(article_id: int, reason: dict, db: Session = Depends(get_db)):
+    print(reason)
+    reason = reason.get("params")
+    reason = reason.get("reason")
+    
     article = db.query(Article).filter(Article.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
@@ -145,6 +149,7 @@ def report_article(article_id: int, reason: str = Query(..., description="Reason
 
     db.commit()
     db.refresh(article)
+    print(article)
     return article
 
 

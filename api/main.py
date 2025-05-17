@@ -1,12 +1,9 @@
-from pathlib import Path
 from contextlib import asynccontextmanager
-from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
-                          TFAutoModelForSequenceClassification)
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai import AsyncWebCrawler, BrowserConfig
 
 from api.database import Base, engine
 from api.routers import profiles, trigger, articles, dashboard, detector
@@ -67,3 +64,7 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
         # For other HTTP errors (403, 500, etc.) you can customize further if you want
         return JSONResponse(content={"error": f"Error {exc.status_code}: {exc.detail}"}, status_code=exc.status_code)
 
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

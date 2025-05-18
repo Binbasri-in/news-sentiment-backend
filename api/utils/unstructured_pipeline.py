@@ -1,21 +1,15 @@
 import logging
 from sqlalchemy.orm import Session
-import asyncio
-from urllib.parse import urlparse
 from unstructured.partition.md import partition_md
 from unstructured.documents.elements import Title, NarrativeText
-from fastapi import Request
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai import AsyncWebCrawler
 import requests
 from unstructured.partition.html import partition_html
 
 
-from torch import no_grad
-from torch.nn.functional import softmax
 from tensorflow.nn import softmax as tf_softmax
 from numpy import argmax
 
-from api.ml_models import ml_models
 from api.models import Profile, Article
 from api.ml_models import get_model
 from api.utils.helpers import get_session_with_agent
@@ -56,12 +50,12 @@ class Crawl4AIPipelineSingleProfile:
         self.session = get_session_with_agent()
 
     def predict_sentiment(self, text: str) -> str:
+        logger.debug(f"Predicting sentiment for text: {text[:50]}...")  # Log the first 50 characters
         tokenizer = get_model("sentiment_tokenizer")
         model = get_model("sentiment_model")
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-        with no_grad():
-            outputs = model(**inputs)
-        scores = softmax(outputs.logits, dim=1)[0]
+        inputs = tokenizer(text, return_tensors="tf", truncation=True, max_length=512, padding=True)
+        outputs = model(inputs)
+        scores = tf_softmax(outputs.logits, axis=1)[0].numpy()
         labels = ["negative", "neutral", "positive"]
         # return an object with the max score and the corresponding label, and all the scors too
         max_score = argmax(scores)
@@ -138,7 +132,6 @@ class Crawl4AIPipelineSingleProfile:
                 sentiment = "Unknown"
                 
             scores = sentiment.get("scores", {})
-            logger.debug(f"Classification: {classification}, Sentiment: {sentiment}")
             ministry = self.category_ministry_mapping.get(classification, "Unknown")
             article = Article(
                 source_id=self.profile.id,

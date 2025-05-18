@@ -9,8 +9,7 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 import requests
 from unstructured.partition.html import partition_html
 
-from torch import no_grad
-from torch.nn.functional import softmax
+
 from tensorflow.nn import softmax as tf_softmax
 from numpy import argmax
 
@@ -55,10 +54,9 @@ class Crawl4AIPipelineSingleProfile:
     def predict_sentiment(self, text: str) -> str:
         tokenizer = get_model("sentiment_tokenizer")
         model = get_model("sentiment_model")
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-        with no_grad():
-            outputs = model(**inputs)
-        scores = softmax(outputs.logits, dim=1)[0]
+        inputs = tokenizer(text, return_tensors="tf", truncation=True, max_length=512, padding=True)
+        outputs = model(inputs)
+        scores = tf_softmax(outputs.logits, axis=1)[0].numpy()
         labels = ["negative", "neutral", "positive"]
         # return an object with the max score and the corresponding label, and all the scors too
         max_score = argmax(scores)

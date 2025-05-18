@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.post("/", response_class=JSONResponse)
-def detect_sentiment(data: dict):
+def detect_sentiment(data: dict, db: Session = Depends(get_db)):
     # get the URL from the request body
     logger.info("Received data: %s", data)
     if not isinstance(data, dict):
@@ -34,7 +34,7 @@ def detect_sentiment(data: dict):
         return JSONResponse(content={"error": "Invalid URL"}, status_code=400)
     
     # send the url to the business logic
-    extractor = SingleArticleExtractor()
+    extractor = SingleArticleExtractor(db=db)
     article = extractor.process(url)
     if not article:
         return JSONResponse(content={"error": "Failed to process URL"}, status_code=500)

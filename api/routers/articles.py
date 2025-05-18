@@ -156,10 +156,22 @@ def report_article(article_id: int, reason: dict, db: Session = Depends(get_db))
 # 🆕 NEW: List Reported Articles (for Admin review maybe)
 @router.get("/reported/", response_model=List[ArticleOut])
 def get_reported_articles(
+    skip: Optional[int] = 0,
+    limit: Optional[int] = 20,
     db: Session = Depends(get_db),
-    skip: int = 0,
-    limit: int = 20,
 ):
-    articles = db.query(Article).filter(Article.is_reported == True).offset(skip).limit(limit).all()
+    print("Request to get reported articles")
+    articles = db.query(Article).filter(Article.is_reported == True).all()
     return articles
 
+# 🆕 NEW: Send email to the ministry point of contact for that article
+@router.get("/{article_id}/send-email")
+def send_email(article_id: int, db: Session = Depends(get_db)):
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    # Here you would implement the logic to send an email
+    # For example, using a library like smtplib or a service like SendGrid
+
+    return {"message": f"Email sent to the ministry point of contact for article ID {article_id}."}

@@ -1,13 +1,13 @@
 import logging
 import requests
+from sqlalchemy.orm import Session
 from unstructured.documents.elements import Title, NarrativeText
 from unstructured.partition.html import partition_html
 from numpy import argmax
-from torch import no_grad
-from torch.nn.functional import softmax
 from tensorflow.nn import softmax as tf_softmax
 import os
 
+from api.models import Article
 from api.ml_models import get_model
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,8 @@ headers = {
 }
 
 class SingleArticleExtractor:
-    def __init__(self):
+    def __init__(self, db: Session):
+        self.db = db
         self.inverse_category_mapping = {v: k for k, v in {
             "Entertainment": 0,
             "Business": 1,
@@ -79,12 +80,10 @@ class SingleArticleExtractor:
     def predict_sentiment(self, text: str):
         tokenizer = get_model("sentiment_tokenizer")
         model = get_model("sentiment_model")
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-
-        with no_grad():
-            outputs = model(**inputs)
-        scores = softmax(outputs.logits, dim=1)[0]
-
+        inputs = tokenizer(text, return_tensors="tf", truncation=True, max_length=512, padding=True)
+        outputs = model(inputs)
+        scores = tf_softmax(outputs.logits, axis=1)[0].numpy()
+    
         labels = ["negative", "neutral", "positive"]
         max_score = argmax(scores)
         sentiment = labels[max_score]
@@ -133,6 +132,24 @@ class SingleArticleExtractor:
     
     def process(self, url: str):
         logger.info(f"Processing article from URL: {url}")
+        # if the URL is already in the database, then give it back
+        existing_article = self.db.query(Article).filter(Article.url == url).first()
+        if existing_article:
+            logger.info(f"Article already exists in the database: {existing_article.title}")
+            return {
+                "id": existing_article.id,
+                "url": existing_article.url,
+                "title": existing_article.title,
+                "content": existing_article.content,
+                "classification": existing_article.classification,
+                "sentiment": existing_article.sentiment,
+                "ministry_to_report": existing_article.ministry_to_report,
+                "positive_sentiment": existing_article.positive_sentiment,
+                "negative_sentiment": existing_article.negative_sentiment,
+                "neutral_sentiment": existing_article.neutral_sentiment
+            }
+            
+        # if not, then extract the article
         result = self.extract_html_content(url)
         if not result:
             return None
@@ -172,14 +189,34 @@ class SingleArticleExtractor:
         scores = sentiment_data["scores"]
         ministry = self.category_ministry_mapping.get(classification, "Unknown")
 
+        # create a new article object
+        article = Article(
+            source_id=1,  # Assuming a default source ID for now
+            url=url,
+            title=title,
+            content=content,
+            classification=classification,
+            sentiment=sentiment_data["sentiment"],
+            ministry_to_report=ministry,
+            positive_sentiment=int(scores.get("positive", 0) * 100),
+            negative_sentiment=int(scores.get("negative", 0) * 100),
+            neutral_sentiment=int(scores.get("neutral", 0) * 100),
+        )
+        # save to database
+        self.db.add(article)
+        self.db.commit()
+        self.db.refresh(article)
+        logger.info(f"Article saved: {article.title} from {article.url}")
+        # return the article data
         return {
-            "url": url,
-            "title": title,
-            "content": content,
-            "classification": classification,
-            "sentiment": sentiment_data["sentiment"],
-            "ministry_to_report": ministry,
-            "positive_sentiment": int(scores["positive"] * 100),
-            "negative_sentiment": int(scores["negative"] * 100),
-            "neutral_sentiment": int(scores["neutral"] * 100),
+            "id": article.id,
+            "url": article.url,
+            "title": article.title,
+            "content": article.content,
+            "classification": article.classification,
+            "sentiment": article.sentiment,
+            "ministry_to_report": article.ministry_to_report,
+            "positive_sentiment": article.positive_sentiment,
+            "negative_sentiment": article.negative_sentiment,
+            "neutral_sentiment": article.neutral_sentiment
         }

@@ -16,3 +16,4 @@ transformers
 tensorflow
 unstructured
 tf-keras
+sib-api-v3-sdk

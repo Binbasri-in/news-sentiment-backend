@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from crawl4ai import AsyncWebCrawler, BrowserConfig
 
 from api.database import Base, engine
-from api.routers import profiles, trigger, articles, dashboard, detector
+from api.routers import profiles, trigger, articles, dashboard, detector, emails
 from api.scheduler import start_scheduler
 from api.config import setup_logging
 from api.ml_models import load_models
@@ -40,6 +40,7 @@ app.include_router(trigger.router, prefix="/auto", tags=["auto"])
 app.include_router(articles.router, prefix="/articles", tags=["Articles"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(detector.router, prefix="/detect", tags=["Detect"])
+app.include_router(emails.router, prefix="/emails", tags=["Emails"])
 
 app.add_middleware(
     CORSMiddleware,

@@ -2,10 +2,11 @@ import logging
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from collections import defaultdict
 
 
 from api.database import get_db
-from api.models import Profile
+from api.models import Profile, Article
 from api.schemas import ProfileCreate, ProfileOut
 from api.utils.unstructured_pipeline import Crawl4AIPipelineSingleProfile
 
@@ -110,3 +111,44 @@ async def trigger_crawl(profile_name: str, request: Request, db: Session = Depen
     
     logger.debug("Crawl triggered successfully for profile: %s", profile)
     return {"message": f"Crawl triggered for profile '{profile_name}'."}
+
+
+# the profile analytic generation
+@router.get("/{profile_id}/analytics")
+def get_profile_analytics(profile_id: str, db: Session = Depends(get_db)):
+    profile = db.query(Profile).filter(Profile.name == profile_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    articles = db.query(Article).filter(Article.source_id == profile.id).all()
+
+    sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
+    section_sentiment = defaultdict(lambda: {"positive": 0, "neutral": 0, "negative": 0})
+    top_positive = []
+    top_negative = []
+
+    for article in articles:
+        sentiment_counts[article.sentiment.lower()] += 1
+        section_sentiment[article.classification][article.sentiment.lower()] += 1
+
+        score = (article.positive_sentiment or 0) - (article.negative_sentiment or 0)
+        if score > 0:
+            top_positive.append((score, article))
+        elif score < 0:
+            top_negative.append((score, article))
+
+    top_positive = sorted(top_positive, key=lambda x: -x[0])[:10]
+    top_negative = sorted(top_negative, key=lambda x: x[0])[:10]
+
+    return {
+        "sentiment_counts": sentiment_counts,
+        "section_sentiment": section_sentiment,
+        "top_positive_articles": [
+            {"title": a.title, "section": a.classification, "score": s}
+            for s, a in top_positive
+        ],
+        "top_negative_articles": [
+            {"title": a.title, "section": a.classification, "score": s}
+            for s, a in top_negative
+        ]
+    }

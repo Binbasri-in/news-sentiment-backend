@@ -73,6 +73,8 @@ async def send_email_to_source(request: dict):
     if not source_email:
         raise HTTPException(status_code=400, detail="Missing source_email")
 
+    source_email = source_email.lower().replace(" ", "_")
+    
     subject = EMAIL_SUBJECTS.get(source_email, "Notification")
     body = EMAIL_BODIES.get(source_email, "Default body content")
     body = body.format(

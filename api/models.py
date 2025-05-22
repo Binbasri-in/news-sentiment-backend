@@ -23,7 +23,7 @@ class Article(Base):
     __tablename__ = "articles"
 
     id = Column(Integer, primary_key=True, index=True)
-    source_id = Column(Integer, ForeignKey("profiles.id"), nullable=False)
+    source_id = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
     url = Column(String, unique=True, nullable=False)
     title = Column(String, nullable=False)
     author = Column(String, nullable=True)  # New: author name if available

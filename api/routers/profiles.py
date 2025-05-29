@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from collections import defaultdict
 
@@ -38,7 +38,7 @@ def create_profile(profile: ProfileCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[ProfileOut])
 def get_profiles(db: Session = Depends(get_db)):
     logger.debug("Fetching all profiles")
-    profiles = db.query(Profile).all()
+    profiles = db.query(Profile).order_by(Profile.id).all()
     logger.debug("Fetched profiles: %s", profiles)
     return profiles
 
@@ -86,30 +86,28 @@ def delete_profile(profile_name: str, db: Session = Depends(get_db)):
 # Extra functionalities
 ################################
 
-# manual crawling trigger
 @router.post("/{profile_name}/crawl")
-async def trigger_crawl(profile_name: str, request: Request, db: Session = Depends(get_db)):
+async def trigger_crawl(profile_name: str, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     logger.debug("Triggering crawl for profile with name: %s", profile_name)
     profile = db.query(Profile).filter(Profile.name == profile_name).first()
     if not profile:
-        logger.debug("Profile with name '%s' not found", profile_name)
         return {"message": f"Profile '{profile_name}' not found."}
-    
-    # check if the profile is already crawled
+
     if profile.crawling_state == "crawled":
-        logger.debug("Profile '%s' is already crawled", profile_name)
         return {"message": f"Profile '{profile_name}' is already crawled."}
     
-    # Here you would call the function to start the crawling process
-    try:
-        pipeline = Crawl4AIPipelineSingleProfile(db=db, profile=profile)
-        await pipeline.run(crawler=request.app.state.crawler)
-        
-    except Exception as e:
-        logger.error("An error occurred while triggering the crawl: %s", str(e))
-        return {"message": f"Crawl triggered for profile '{profile_name}'."}
-    
-    logger.debug("Crawl triggered successfully for profile: %s", profile)
+    # get the profile state
+    if profile.crawling_state == "crawling":
+        profile.crawling_state = "idle"
+    else:
+        profile.crawling_state = "crawling"
+        db.commit()
+    logger.debug("Profile '%s' state set to 'crawling'", profile_name)
+
+    # Run the pipeline in a background task
+    pipeline = Crawl4AIPipelineSingleProfile(db=db, profile=profile)
+    background_tasks.add_task(run_crawler_background, pipeline, request.app.state.crawler)
+
     return {"message": f"Crawl triggered for profile '{profile_name}'."}
 
 
@@ -152,3 +150,9 @@ def get_profile_analytics(profile_id: str, db: Session = Depends(get_db)):
             for s, a in top_negative
         ]
     }
+
+
+def run_crawler_background(pipeline, crawler):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(pipeline.run(crawler=crawler))

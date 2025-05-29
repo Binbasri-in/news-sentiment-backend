@@ -93,7 +93,7 @@ def get_articles(
         query = query.filter(Article.is_featured == is_featured)
 
     logger.debug("Number of Results: %d", query.count())
-    return query.offset(skip).limit(limit).all()
+    return query.order_by(Article.published_at.desc()).offset(skip).limit(limit).all()
 
 
 @router.get("/{article_id}", response_model=ArticleOut)
@@ -161,7 +161,7 @@ def get_reported_articles(
     db: Session = Depends(get_db),
 ):
     print("Request to get reported articles")
-    articles = db.query(Article).filter(Article.is_reported == True).all()
+    articles = db.query(Article).filter(Article.is_reported == True).order_by(Article.published_at.desc()).all()
     return articles
 
 # 🆕 NEW: Send email to the ministry point of contact for that article

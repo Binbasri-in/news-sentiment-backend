@@ -151,16 +151,16 @@ class Crawl4AIPipelineSingleProfile:
             self.db.refresh(article)
             logger.info(f"Article saved: {article.title} from {article.url}")
 
-        # Update the profile state to 'crawled'
-        updated_profile = self.db.query(Profile).filter(Profile.id == self.profile.id).first()
-        if updated_profile:
-            updated_profile.crawling_state = "crawled"
-            updated_profile.last_crawled = datetime.utcnow()
-            self.db.commit()
-            logger.info(f"Profile {self.profile.name} state updated to 'crawled'.")
-        else:
-            logger.error(f"Profile {self.profile.name} not found in the database.")
-        logger.info(f"Finished crawling for profile: {self.profile.name}")
+        # # Update the profile state to 'crawled'
+        # updated_profile = self.db.query(Profile).filter(Profile.id == self.profile.id).first()
+        # if updated_profile:
+        #     updated_profile.crawling_state = "crawled"
+        #     updated_profile.last_crawled = datetime.utcnow()
+        #     self.db.commit()
+        #     logger.info(f"Profile {self.profile.name} state updated to 'crawled'.")
+        # else:
+        #     logger.error(f"Profile {self.profile.name} not found in the database.")
+        # logger.info(f"Finished crawling for profile: {self.profile.name}")
        
         
 def parse_article(markdown_content: str):
